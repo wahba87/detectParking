@@ -3,9 +3,12 @@
 #include <sstream>
 #include <fstream>
 #include <opencv2/opencv.hpp>
+#include <ConfigLoad.h>
+#include <chrono>
+#include <thread>
 #include "Parking.h"
 #include "utils.h"
-#include "ConfigLoad.h"
+#include "RestClient.hpp"
 
 using namespace std;
 
@@ -83,8 +86,8 @@ int main(int argc, char** argv)
 		cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
 		cv::GaussianBlur(frame_gray, frame_blur, blur_kernel, 3, 3);
 		
-        cout << ConfigLoad::options["DETECT_PARKING"];
-        printf("\n");
+        //cout << ConfigLoad::options["DETECT_PARKING"];
+        //printf("\n");
         
 		if (ConfigLoad::options["DETECT_PARKING"] == "true")
 		{
@@ -96,7 +99,23 @@ int main(int argc, char** argv)
 				delta = cv::mean(cv::abs(laplacian), park.getMask());
                 park.setStatus( delta[0] < atof(ConfigLoad::options["PARK_LAPLACIAN_TH"].c_str()) );
 				printf("| %d: d=%-5.1f", park.getId(), delta[0]);
+                
+                //RestClient rc;
+
+//                struct arg_struct args;
+//                args.bayId = to_string(park.getId());
+//                args.free = delta[0] < atof(ConfigLoad::options["PARK_LAPLACIAN_TH"].c_str());
+                
+                string bayId = to_string(park.getId());
+                bool free = delta[0] < atof(ConfigLoad::options["PARK_LAPLACIAN_TH"].c_str());
+                
+                if (ConfigLoad::options["POST_Results_to_TW"] == "true"){
+                    RestClient::updateParkingInfo(bayId , free);
+                }
+        
 			}
+    this_thread::sleep_for(chrono::milliseconds(stoi(ConfigLoad::options["sleep_time_between_readings_ms"])));
+            
 			printf("\n");
 		}
 
